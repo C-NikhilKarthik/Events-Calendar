@@ -34,8 +34,9 @@ export default function CalendarBody({ currentDate }) {
     ).padStart(2, "0")}`;
 
     // Data persistence states.
-    const [events, setEvents] = useState([]);
+    const [events, setEvents] = useState(localStorage.getItem("calendarData")[monthKey]?.events || []);
     const [resourceCount, setResourceCount] = useState(15);
+    const [hasLoaded, setHasLoaded] = useState(false);
 
     // Event creation states.
     const [isDragging, setIsDragging] = useState(false);
@@ -50,25 +51,27 @@ export default function CalendarBody({ currentDate }) {
     // Create refs for each resource row.
     const containerRefs = useRef([]);
 
-    // ---------------------------
+    // ---------------------------  
     // Load/Save Data in localStorage
     // ---------------------------
     useEffect(() => {
         const storedData = JSON.parse(localStorage.getItem("calendarData") || "{}");
         if (storedData[monthKey]) {
-            setEvents(storedData[monthKey].events || []);
-            setResourceCount(storedData[monthKey].resources || 15);
+            setEvents(storedData[monthKey]?.events || []);
+            setResourceCount(storedData[monthKey]?.resources || 15);
         } else {
             setEvents([]);
             setResourceCount(15);
         }
+        setHasLoaded(true);
     }, [monthKey]);
 
     useEffect(() => {
+        if (!hasLoaded) return;
         const storedData = JSON.parse(localStorage.getItem("calendarData") || "{}");
         storedData[monthKey] = { events, resources: resourceCount };
         localStorage.setItem("calendarData", JSON.stringify(storedData));
-    }, [events, resourceCount, monthKey]);
+    }, [events, resourceCount, monthKey, hasLoaded]);
 
     // Listen for the custom "addResource" event dispatched from the header.
     useEffect(() => {
@@ -125,6 +128,13 @@ export default function CalendarBody({ currentDate }) {
         setIsDragging(false);
         setDragStart(null);
         setDragEnd(null);
+    };
+
+    const handleDeleteEvent = (e, eventId) => {
+        e.stopPropagation();
+        if (window.confirm("Are you sure you want to delete this event?")) {
+            setEvents((prevEvents) => prevEvents.filter((ev) => ev.id !== eventId));
+        }
     };
 
     // ---------------------------
@@ -237,14 +247,24 @@ export default function CalendarBody({ currentDate }) {
             {/* Calendar Grid Header */}
             <div className="sticky top-0 z-[6] flex text-sm bg-white">
                 <div className="flex-none w-48 border border-primary border-l-0 sticky left-0 bg-white" />
-                {days.map((d, index) => (
-                    <div
-                        key={index}
-                        className="flex-none w-16 border border-primary border-l-0 p-1 text-center"
-                    >
-                        {d?.date} {d?.day}
-                    </div>
-                ))}
+                {days.map((d, index) => {
+                    // Determine if this cell's date matches today's date.
+                    const today = new Date();
+                    const isToday =
+                        today.getFullYear() === currentDate.getFullYear() &&
+                        today.getMonth() === currentDate.getMonth() &&
+                        today.getDate() === d.date; // Assumes d.date is the day number
+
+                    return (
+                        <div
+                            key={index}
+                            className={`flex-none w-16 border border-primary border-l-0 p-1 text-center ${isToday ? "bg-blue-500 text-white" : ""
+                                }`}
+                        >
+                            {d.date} {d.day}
+                        </div>
+                    );
+                })}
             </div>
 
             {/* Calendar Grid Body */}
@@ -307,15 +327,24 @@ export default function CalendarBody({ currentDate }) {
                                                             height: "40px",
                                                             backgroundColor: event.color,
                                                             opacity: hoveredEvent === event.id ? 1 : 0.5,
-                                                            border:
-                                                                hoveredEvent === event.id
-                                                                    ? "2px solid #1d4ed8"
-                                                                    : "none",
+                                                            border: hoveredEvent === event.id ? "2px solid #1d4ed8" : "none",
                                                             pointerEvents: "auto",
                                                         }}
-                                                    >   <div className="text-ellipsis overflow-hidden whitespace-nowrap">New Event</div>
+                                                    >
+                                                        <span
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                console.log("Delete event", event.id);
+                                                                handleDeleteEvent(e, event.id);
+                                                            }}
+                                                            className="absolute top-1 right-1 z-10 cursor-pointer px-1"
+                                                        >
+                                                            X
+                                                        </span>
+                                                        <div className="text-ellipsis overflow-hidden whitespace-nowrap">
+                                                            New Event
+                                                        </div>
                                                         <div className="text-[10px] text-ellipsis overflow-hidden whitespace-nowrap">
-
                                                             {formatTime(event.left)} - {formatTime(event.left + event.width)}
                                                         </div>
                                                         {/* Resizer handle */}

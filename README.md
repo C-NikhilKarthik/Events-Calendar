@@ -48,13 +48,13 @@ This is a React-based calendar application that supports multiple resources and 
 1. Clone the repository:
 
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/C-NikhilKarthik/Events-Calendar
    ```
 
 2. Change into the repository directory:
 
    ```bash
-   cd react-calendar-application
+   cd events-calendar
    ```
 
 3. Install the dependencies:
